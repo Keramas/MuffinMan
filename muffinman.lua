@@ -1,7 +1,7 @@
 _addon.name = 'MuffinMan'
 _addon.author = 'Kunel'
 _addon.version = '1.0'
-_addon.commands = {'mm'}
+_addon.commands = {'muffinman','mm'}
 
 require('chat')
 packets = require('packets')
