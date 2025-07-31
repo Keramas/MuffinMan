@@ -6,6 +6,10 @@ FFXI Sortie 9-boss metric tracking add-on that generates an easy to copy/paste r
 - Aminon battle parse with weaponskill averages (leverages Scoreboard output)
 - Tally of total gallimaufry obtained during the run
 - Aminon battle duration
+- Bonus objective tracking:
+    - Ground floor aurum chest 
+    - Number of naakual sets completed
+    - Which basement mini-NMs were defeated
 
 For statics that are looking to improve and track metrics over time, this add-on cuts down on the time for filtering and screenshotting scoreboard data, organizes the data in a cleaner formatted table, and easily tallies Gallimaufry without the need for doing manual maths based on your existing total.
 
@@ -32,6 +36,14 @@ Example report output:
 ```
 [Sortie Report - DAY MONTH DD HH:MM:SS 20YY]
 Total Gallimaufry: 87,927
+-----------------------------
+[Completed Bonus Objectives]
+Ground floor Aurum Chest
+Naakual sets defeated: 1
+Tulittia
+Naraka
+Ixion
+Botulus
 -----------------------------
 [Party Composition]
 PLAYER1 (GEO99/DRK58)
@@ -78,5 +90,5 @@ While the gallimaufry tally is reported each time more gallimaufry is obtained, 
 Todo:
 
 - Add functionality for sending data to Discord channel via webhook
-- Track mini-NMs and other objectives 
-- Collect COR roll data for Aminon 
+- Collect COR roll data for Aminon
+- Number of +1 chests obtained

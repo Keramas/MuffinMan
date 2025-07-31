@@ -1,6 +1,6 @@
 _addon.name = 'MuffinMan'
 _addon.author = 'Kunel'
-_addon.version = '1.0'
+_addon.version = '1.1'
 _addon.commands = {'muffinman','mm'}
 
 require('chat')
@@ -12,6 +12,28 @@ local fight_start_time = nil
 local fight_end_time = nil
 local party_jobs = {}
 
+-----------------------------
+-- Objective and NM tracking
+-----------------------------
+local minis = 0
+
+local mini_log = T{}
+
+local basement_mini_nms = S{
+    'Botulus',
+    'Ixion',
+    'Naraka',
+    'Tulittia'
+}
+
+local aurum_chest = false
+
+-- Esurient Flan
+local flans = false
+local naaks = 0
+
+
+------------------------------
 -- Format numbers with commas
 local function comma_value(n)
     local left, num, right = tostring(n):match('^([^%d]*%d)(%d*)(.-)$')
@@ -55,6 +77,30 @@ local function format_party_composition()
 
     return lines
 end
+
+
+local function check_basement_minis(mini_name)
+
+    mini_log = T{}
+    mini_log:clear()
+    
+    mini_capturing = true
+  
+    windower.send_command('scoreboard filter add ' .. mini_name)
+    coroutine.sleep(0.5)
+    windower.send_command('scoreboard stat wsavg')
+    coroutine.sleep(2) 
+    windower.send_command('scoreboard filter clear')
+    mini_capturing = false
+
+    for _,line in ipairs(mini_log) do
+        if line:find(mini_name) then
+            return true
+        end
+    end
+    return false
+end
+
 
 -- Format Aminon report block
 local function format_aminon_report(lines)
@@ -146,7 +192,8 @@ local function generate_report()
     coroutine.sleep(2.5) -- let Scoreboard print its damage lines
     windower.send_command('scoreboard stat wsavg')
     coroutine.sleep(2) -- let Scoreboard print its wsavg lines
-
+    windower.send_command('scoreboard filter clear')
+    coroutine.sleep(2)
     scoreboard_capturing = false
 
     -- Post-process the captured log into report sections
@@ -168,17 +215,44 @@ local function generate_report()
     table.insert(report_output, ('Total Gallimaufry: %s'):format(comma_value(gallimaufry_total)))
     table.insert(report_output, "-----------------------------")
 
+    -- Add extra objectives here
+    table.insert(report_output, '[Completed Bonus Objectives]')
+
+    -- Ground Floor Aurum Chest 
+    --Kunel received 1000 gallimaufry for a total of 334816.--
+    if aurum_chest then
+        table.insert(report_output, 'Ground floor Aurum Chest')
+    end
+    
+    -- Basement Minis
+    for mob in basement_mini_nms:it() do
+        if check_basement_minis(mob) then
+            table.insert(report_output, mob)
+        end
+    end
+
+    -- Naaks chest (increment up from 0 to check if multiple groups/chests done)
+    --Kunel received 1500 gallimaufry for a total of 334816.--
+    if naaks > 0 then
+        table.insert(report_output, ('Naakual sets defeated: %s'):format(comma_value(naaks)))
+    end
+
+    
+    table.insert(report_output, "-----------------------------")
     -- Add party composition to report
     for _, line in ipairs(format_party_composition()) do
         table.insert(report_output, line)
     end
     table.insert(report_output, "-----------------------------")
 
+
+
+
     -- Add aminon dmg report
     table.insert(report_output, '[Aminon Damage Report]')
     for _, l in ipairs(format_aminon_report(aminon_block)) do table.insert(report_output, l) end
     table.insert(report_output, '-----------------------------')
-    table.insert(report_output, '[Weaponskill Averages]')
+    table.insert(report_output, '[Aminon Weaponskill Averages]')
     for _, l in ipairs(format_wsavg(wsavg_block)) do table.insert(report_output, l) end
 
     -- Add Aminon fight duration data to report
@@ -245,6 +319,9 @@ windower.register_event('incoming text', function(original, modified, mode)
     if scoreboard_capturing then
         table.insert(output_log, original)
     end
+    if mini_capturing then
+        table.insert(mini_log, original)
+    end  
 end)
 
 
@@ -283,6 +360,20 @@ windower.register_event('incoming text', function(original, modified, mode)
                 comma_value(amount),
                 comma_value(gallimaufry_total)
             ))
+
+            -- Check if opened Aurum chest
+            if tonumber(amount) == 1000 then
+                aurum_chest = true
+                windower.add_to_chat(207, '[MuffinMan] Aurum chest opened!')
+            end 
+
+            -- Check if defeated Naakuals
+            if tonumber(amount) == 1500 then
+                naaks = naaks + 1
+                windower.add_to_chat(207, '[MuffinMan] Naakual chest opened!')
+            end
+
+
         else
         end
     end
