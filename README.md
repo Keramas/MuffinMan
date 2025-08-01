@@ -10,6 +10,9 @@ FFXI Sortie 9-boss metric tracking add-on that generates an easy to copy/paste r
     - Ground floor aurum chest 
     - Number of naakual sets completed
     - Which basement mini-NMs were defeated
+- Corsair roll and Wild Card values on Aminon
+
+By adding a Discord webhook, you can easily send the report to your group's Discord channel as well.
 
 For statics that are looking to improve and track metrics over time, this add-on cuts down on the time for filtering and screenshotting scoreboard data, organizes the data in a cleaner formatted table, and easily tallies Gallimaufry without the need for doing manual maths based on your existing total.
 
@@ -25,7 +28,18 @@ To ensure a clear cache and scoreboard (despite filtering for Aminon), use the `
 //mm reset
 ```
 
-Once the run is over, generate a report which is output to the data folder with the `report` command.
+To enable/disable automatic report sending to a Discord channel via webhook, use the `discord` command. 
+
+```lua
+//mm discord
+```
+Additionally, once your webhook has been generated, add it to the top of the `muffinman.lua` file replacing the placeholder text:
+
+```lua
+local webhook_url = "ADD YOUR WEBHOOK HERE"
+```
+
+Once the run is over, generate a report which is output to the data folder with the `report` command. If pushes to Discord have been enabled, this will also be pushed to the channel associated with the webhook.
 
 ```lua
 //mm report
@@ -52,6 +66,11 @@ PLAYER3 (BRD99/DRK59)
 PLAYER4 (DNC99/DRG58)
 PLAYER5 (PLD99/RUN58)
 PLAYER6 (RDM99/DRK57)
+-----------------------------
+[COR Rolls]
+Miser's: 5 (Lucky!)
+Tactician's: 5 (Lucky!)
+Wild Card: 5
 -----------------------------
 [Aminon Damage Report]
 Name                 Damage       Percent
@@ -88,7 +107,4 @@ While the gallimaufry tally is reported each time more gallimaufry is obtained, 
 
 
 Todo:
-
-- Add functionality for sending data to Discord channel via webhook
-- Collect COR roll data for Aminon
 - Number of +1 chests obtained

@@ -4,36 +4,46 @@ _addon.version = '1.1'
 _addon.commands = {'muffinman','mm'}
 
 require('chat')
+require('logger')
 packets = require('packets')
 res = require('resources')
+
+local webhook_url = "ADD YOUR WEBHOOK HERE"
+
+local https = require("ssl.https")
+local ltn12 = require("ltn12")
+package.path = package.path .. ';' .. windower.addon_path .. 'libs/?.lua'
+local json = require('dkjson')
+
+local push_to_discord = false
 
 local gallimaufry_total = 0
 local fight_start_time = nil
 local fight_end_time = nil
 local party_jobs = {}
 
+local aminon_rolls = {
+    ['Tactician\'s'] = {lucky = false, value = 0},
+    ['Miser\'s'] =     {lucky = false, value = 0} 
+}
+
+local wild_card_roll = 0
+
 -----------------------------
 -- Objective and NM tracking
 -----------------------------
-local minis = 0
-
 local mini_log = T{}
-
+local flan_log = T{}
 local basement_mini_nms = S{
     'Botulus',
     'Ixion',
     'Naraka',
     'Tulittia'
 }
-
 local aurum_chest = false
-
--- Esurient Flan
-local flans = false
 local naaks = 0
-
-
 ------------------------------
+
 -- Format numbers with commas
 local function comma_value(n)
     local left, num, right = tostring(n):match('^([^%d]*%d)(%d*)(.-)$')
@@ -101,6 +111,27 @@ local function check_basement_minis(mini_name)
     return false
 end
 
+local function check_flans()
+
+    flan_log = T{}
+    flan_log:clear()
+    
+    flan_capturing = true
+  
+    windower.send_command('scoreboard filter add Flan')
+    coroutine.sleep(0.5)
+    windower.send_command('scoreboard stat wsavg')
+    coroutine.sleep(2) 
+    windower.send_command('scoreboard filter clear')
+    flan_capturing = false
+
+    for _,line in ipairs(flan_log) do
+        if line:find(flan_log) then
+            return true
+        end
+    end
+    return false
+end
 
 -- Format Aminon report block
 local function format_aminon_report(lines)
@@ -179,6 +210,45 @@ local function save_report_file(contents)
     end
 end
 
+
+
+local function send_to_discord(message)
+
+    if type(message) == "table" then
+        message = table.concat(message, "\n")
+    elseif type(message) ~= "string" then
+        windower.add_to_chat(123, "[Discord] Invalid message type: " .. type(message))
+        return
+    end
+
+    local formatted = '```\n' .. message .. '\n```'
+    
+    local payload_table = {
+        content = formatted
+    }
+
+    local payload = json.encode(payload_table)
+
+    local response_body = {}
+    local https = require("ssl.https")
+    local result, status_code, headers, status_line = https.request{
+        url = webhook_url,
+        method = "POST",
+        headers = {
+            ["Content-Type"] = "application/json",
+            ["Content-Length"] = tostring(#payload)
+        },
+        source = ltn12.source.string(payload),
+        sink = ltn12.sink.table(response_body)
+    }
+
+    if status_code == 204 then
+        windower.add_to_chat(207, "[Discord] Message sent successfully.")
+    else
+        windower.add_to_chat(123, "[Discord] Failed to send: " .. (status_line or "Unknown error"))
+    end
+end
+
 ---------------------------------------------------
 -- Main report generation function
 ---------------------------------------------------
@@ -219,7 +289,6 @@ local function generate_report()
     table.insert(report_output, '[Completed Bonus Objectives]')
 
     -- Ground Floor Aurum Chest 
-    --Kunel received 1000 gallimaufry for a total of 334816.--
     if aurum_chest then
         table.insert(report_output, 'Ground floor Aurum Chest')
     end
@@ -231,14 +300,17 @@ local function generate_report()
         end
     end
 
-    -- Naaks chest (increment up from 0 to check if multiple groups/chests done)
-    --Kunel received 1500 gallimaufry for a total of 334816.--
-    if naaks > 0 then
-        table.insert(report_output, ('Naakual sets defeated: %s'):format(comma_value(naaks)))
+    -- Flans
+    if check_flans() then
+        table.insert(report_output, 'Flans')
     end
 
-    
+    -- Naaks chest (increment up from 0 to check if multiple groups/chests done)
+    if naaks > 0 then
+        table.insert(report_output, ('Naakual sets defeated: %s'):format(comma_value(naaks)))
+    end  
     table.insert(report_output, "-----------------------------")
+    
     -- Add party composition to report
     for _, line in ipairs(format_party_composition()) do
         table.insert(report_output, line)
@@ -246,6 +318,19 @@ local function generate_report()
     table.insert(report_output, "-----------------------------")
 
 
+    -- Add COR roll data
+    table.insert(report_output, '[COR Rolls]')
+    roll_data = ''
+    for roll_name, data in pairs(aminon_rolls) do
+        if data.lucky then
+            roll_data = roll_name .. ': ' .. data.value .. ' (Lucky!)'
+        else
+            roll_data = roll_name .. ': ' .. data.value
+        end
+        table.insert(report_output, roll_data)
+    end
+    table.insert(report_output, "Wild Card: " .. wild_card_roll)
+    table.insert(report_output, "-----------------------------")
 
 
     -- Add aminon dmg report
@@ -271,6 +356,11 @@ local function generate_report()
     windower.send_command('scoreboard filter clear')
 
     save_report_file(report_output)
+
+    if push_to_discord then
+        send_to_discord(report_output)
+    end
+
 end
 
 
@@ -310,6 +400,66 @@ windower.register_event('incoming chunk', function(id, data, modified, injected,
 
 end)
 
+
+-- Find roll values during Aminon battle
+-- Referenced and used code from the 'rolltracker' add-on. Thanks!
+windower.register_event('action', function(act)
+    
+    local rollInfoTemp = {
+
+        -- For Aminon we only care about Tact/Miser
+        ['Miser\'s'] =      {30,50,70,90,200,110,20,130,150,170,250,'0',' Save TP',5,7, 15,{nil,0}},
+        ['Tactician\'s'] =  {10,10,10,10,30,10,10,0,20,20,40,'-10',' Regain',5,8, 2,{nil,0},{5, 11100, 26930, 26931, 10}},     
+    }
+
+    rollInfo = {}
+    for key, val in pairs(rollInfoTemp) do
+        rollInfo[res.job_abilities:with('english', key .. ' Roll').id] = {key, unpack(val)}
+    end    
+    
+    local wildcard_table = {
+        [435] = '1',
+        [436] = '2',
+        [437] = '3',
+        [438] = '4',
+        [439] = '5',
+        [440] = '6',
+    }
+
+    -- This SHOULD be contrained to party members only, but since the logic is only when Aminon is being fought
+    -- there is no real need to do that here.
+    if fight_start_time then 
+
+        -- For wild card parsing
+        if act.category == 6 and act.param == 96 then -- WC ID
+            if wildcard_table[act.targets[1].actions[1].message] then
+                wild_card_roll = wildcard_table[act.targets[1].actions[1].message]
+            else
+                wild_card_roll = "Unknown"
+            end
+        end
+
+        -- For tact/miser parsing
+        if act.category == 6 and table.containskey(rollInfo, act.param) then
+
+            local rollID = act.param
+            local rollNum = act.targets[1].actions[1].param
+
+
+            for roll_name, data in pairs(aminon_rolls) do
+                if rollInfo[rollID][1] == roll_name then
+                    if rollNum == rollInfo[rollID][15] or rollNum == 11 then               
+                        aminon_rolls[roll_name].lucky = true
+                    end
+                    aminon_rolls[roll_name].value = rollNum
+                end    
+            end
+
+         end
+    end
+end)
+
+
 -- Hook Scoreboard's outgoing text so we can capture reports
 windower.register_event('outgoing text', function(original, modified, mode)
 end)
@@ -321,7 +471,11 @@ windower.register_event('incoming text', function(original, modified, mode)
     end
     if mini_capturing then
         table.insert(mini_log, original)
-    end  
+    end 
+    if flan_capturing then
+        table.insert(flan_log, original)
+    end
+
 end)
 
 
@@ -395,10 +549,19 @@ windower.register_event('addon command', function(cmd, ...)
     elseif cmd == 'report' then
         windower.add_to_chat(207, '[MuffinMan] Generating full report...')
         coroutine.schedule(generate_report, 0.5) 
+    elseif cmd == 'discord' then
+        if not push_to_discord then
+            push_to_discord = true
+            windower.add_to_chat(207, '[MuffinMan] Enabled report pushes to Discord.')
+        else 
+            push_to_discord = false
+            windower.add_to_chat(207, '[MuffinMan] Disabled report pushes to Discord.')
+        end
     else
         windower.add_to_chat(123, '[MuffinMan] Commands:')
         windower.add_to_chat(123, '//mm total     - Show gallimaufry total')
         windower.add_to_chat(123, '//mm reset     - Reset gallimaufry and parse')
         windower.add_to_chat(123, '//mm report    - Save gallimaufry and damage report to file')
+        windower.add_to_chat(123, '//mm discord   - Enables/disables automatic push to Discord channel via webhook.')
     end
 end)
