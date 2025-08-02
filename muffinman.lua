@@ -22,6 +22,8 @@ local fight_start_time = nil
 local fight_end_time = nil
 local party_jobs = {}
 
+local old_case_tally = 0
+
 local aminon_rolls = {
     ['Tactician\'s'] = {lucky = false, value = 0},
     ['Miser\'s'] =     {lucky = false, value = 0} 
@@ -283,6 +285,7 @@ local function generate_report()
 
     table.insert(report_output, ('[Sortie Report - %s]'):format(os.date()))
     table.insert(report_output, ('Total Gallimaufry: %s'):format(comma_value(gallimaufry_total)))
+    table.insert(report_output, ('Total Old Case +1: %s'):format(comma_value(old_case_tally)))
     table.insert(report_output, "-----------------------------")
 
     -- Add extra objectives here
@@ -529,6 +532,11 @@ windower.register_event('incoming text', function(original, modified, mode)
 
 
         else
+        end
+
+        if find("Obtained: Old case +1.") then
+            old_case_tally = old_case_tally +1
+            windower.add_to_chat(207, '[MuffinMan] Old case +1 obtained!')
         end
     end
 end)
