@@ -126,7 +126,7 @@ local function check_flans()
     flan_capturing = false
 
     for _,line in ipairs(flan_log) do
-        if line:find(flan_log) then
+        if line:find("Flan") then
             return true
         end
     end
