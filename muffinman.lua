@@ -1,5 +1,5 @@
 _addon.name = 'MuffinMan'
-_addon.author = 'Kunel'
+_addon.author = 'Kunel (Keramas)'
 _addon.version = '1.1'
 _addon.commands = {'muffinman','mm'}
 
@@ -534,11 +534,13 @@ windower.register_event('incoming text', function(original, modified, mode)
         else
         end
 
-        if find("Obtained: Old case +1.") then
+        if original:find("Obtained: %z*\31\205Old case %+1\31\001%.") then
             old_case_tally = old_case_tally +1
             windower.add_to_chat(207, '[MuffinMan] Old case +1 obtained!')
         end
+
     end
+
 end)
 
 
