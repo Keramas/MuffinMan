@@ -3,14 +3,16 @@
 FFXI Sortie 9-boss metric tracking add-on that generates an easy to copy/paste report of the following:
 
 - Party composition for the run
-- Aminon battle parse with weaponskill averages (leverages Scoreboard output)
+- Bosses defeated during the run
+- Aminon battle data:
+    - Full party parse with weaponskill averages (leverages Scoreboard output)
+    - Battle duration
+    - Corsair's Miser/Tact roll values and Wild Card values
 - Tally of total gallimaufry obtained during the run
-- Aminon battle duration
 - Bonus objective tracking:
     - Ground floor aurum chest 
     - Number of naakual sets completed
     - Which basement mini-NMs were defeated
-- Corsair roll and Wild Card values on Aminon
 - Number of +1 chests obtained
 
 By adding a Discord webhook, you can easily send the report to your group's Discord channel as well.
@@ -51,6 +53,18 @@ Example report output:
 ```
 [Sortie Report - DAY MONTH DD HH:MM:SS 20YY]
 Total Gallimaufry: 87,927
+Total Old Case +1: 1
+-----------------------------
+[Defeated Bosses]
+Degei
+Aita
+Triboulex
+Leshonn
+Dhartok
+Skomora
+Gartell
+Ghatjot
+Aminon
 -----------------------------
 [Completed Bonus Objectives]
 Ground floor Aurum Chest

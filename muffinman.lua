@@ -1,6 +1,6 @@
 _addon.name = 'MuffinMan'
-_addon.author = 'Kunel (Keramas)'
-_addon.version = '1.1'
+_addon.author = 'Kunel'
+_addon.version = '1.2'
 _addon.commands = {'muffinman','mm'}
 
 require('chat')
@@ -42,8 +42,22 @@ local basement_mini_nms = S{
     'Naraka',
     'Tulittia'
 }
+
+local bosses = S{
+    'Ghatjot',
+    'Leshonn',
+    'Skomora',
+    'Degei',
+    'Dhartok',
+    'Gartell',
+    'Triboulex',
+    'Aita',
+    'Aminon'
+}
+
 local aurum_chest = false
 local naaks = 0
+local aminon_defeated = false
 ------------------------------
 
 -- Format numbers with commas
@@ -91,7 +105,30 @@ local function format_party_composition()
 end
 
 
-local function check_basement_minis(mini_name)
+local function check_aminon()
+
+    aminon_log = T{}
+    aminon_log:clear()
+    
+    aminon_capturing = true
+  
+    windower.send_command('scoreboard filter add Aminon')
+    coroutine.sleep(0.5)
+    windower.send_command('scoreboard stat wsavg')
+    coroutine.sleep(2) 
+    windower.send_command('scoreboard filter clear')
+    aminon_capturing = false
+
+    for _,line in ipairs(aminon_log) do
+        if line:find('Aminon') then
+            return true
+        end
+    end
+    return false
+end
+
+
+local function check_nm(mini_name)
 
     mini_log = T{}
     mini_log:clear()
@@ -135,7 +172,7 @@ local function check_flans()
     return false
 end
 
--- Format Aminon report block
+-- Format report block
 local function format_aminon_report(lines)
     local formatted = {}
 
@@ -288,6 +325,15 @@ local function generate_report()
     table.insert(report_output, ('Total Old Case +1: %s'):format(comma_value(old_case_tally)))
     table.insert(report_output, "-----------------------------")
 
+    -- Bosses
+    table.insert(report_output, '[Defeated Bosses]')
+    for boss in bosses:it() do
+        if check_nm(boss) then
+            table.insert(report_output, boss)
+        end
+    end
+    table.insert(report_output, "-----------------------------")
+
     -- Add extra objectives here
     table.insert(report_output, '[Completed Bonus Objectives]')
 
@@ -297,9 +343,9 @@ local function generate_report()
     end
     
     -- Basement Minis
-    for mob in basement_mini_nms:it() do
-        if check_basement_minis(mob) then
-            table.insert(report_output, mob)
+    for mini_nm in basement_mini_nms:it() do
+        if check_nm(mini_nm) then
+            table.insert(report_output, mini_nm)
         end
     end
 
@@ -321,39 +367,44 @@ local function generate_report()
     table.insert(report_output, "-----------------------------")
 
 
-    -- Add COR roll data
-    table.insert(report_output, '[COR Rolls]')
-    roll_data = ''
-    for roll_name, data in pairs(aminon_rolls) do
-        if data.lucky then
-            roll_data = roll_name .. ': ' .. data.value .. ' (Lucky!)'
-        else
-            roll_data = roll_name .. ': ' .. data.value
+
+    -- Add report block if Aminon was defeated
+    if check_aminon() then
+        -- Add COR roll data
+        table.insert(report_output, '[COR Rolls]')
+        
+        roll_data = ''
+        for roll_name, data in pairs(aminon_rolls) do
+            if data.lucky then
+                roll_data = roll_name .. ': ' .. data.value .. ' (Lucky!)'
+            else
+                roll_data = roll_name .. ': ' .. data.value
+            end
+            table.insert(report_output, roll_data)
         end
-        table.insert(report_output, roll_data)
-    end
-    table.insert(report_output, "Wild Card: " .. wild_card_roll)
-    table.insert(report_output, "-----------------------------")
 
+        table.insert(report_output, "Wild Card: " .. wild_card_roll)
+        table.insert(report_output, "-----------------------------")
 
-    -- Add aminon dmg report
-    table.insert(report_output, '[Aminon Damage Report]')
-    for _, l in ipairs(format_aminon_report(aminon_block)) do table.insert(report_output, l) end
-    table.insert(report_output, '-----------------------------')
-    table.insert(report_output, '[Aminon Weaponskill Averages]')
-    for _, l in ipairs(format_wsavg(wsavg_block)) do table.insert(report_output, l) end
-
-    -- Add Aminon fight duration data to report
-    if fight_start_time and fight_end_time then
-        local duration = os.difftime(fight_end_time, fight_start_time)
-        local minutes = math.floor(duration / 60)
-        local seconds = duration % 60
+        -- Add aminon dmg report
+        table.insert(report_output, '[Aminon Damage Report]')
+        for _, l in ipairs(format_aminon_report(aminon_block)) do table.insert(report_output, l) end
         table.insert(report_output, '-----------------------------')
-        table.insert(report_output, "[Aminon Fight Duration]")
-        table.insert(report_output, string.format("%d min %d sec", minutes, seconds))
-    else
-        table.insert(report_output, '-----------------------------')
-        table.insert(report_output, "[Aminon Fight Duration] Incomplete or missing.")
+        table.insert(report_output, '[Aminon Weaponskill Averages]')
+        for _, l in ipairs(format_wsavg(wsavg_block)) do table.insert(report_output, l) end
+
+        -- Add Aminon fight duration data to report
+        if fight_start_time and fight_end_time then
+            local duration = os.difftime(fight_end_time, fight_start_time)
+            local minutes = math.floor(duration / 60)
+            local seconds = duration % 60
+            table.insert(report_output, '-----------------------------')
+            table.insert(report_output, "[Aminon Fight Duration]")
+            table.insert(report_output, string.format("%d min %d sec", minutes, seconds))
+        else
+            table.insert(report_output, '-----------------------------')
+            table.insert(report_output, "[Aminon Fight Duration] Data missing or undefeated.")
+        end
     end
 
     windower.send_command('scoreboard filter clear')
@@ -425,8 +476,8 @@ windower.register_event('action', function(act)
         [436] = '2',
         [437] = '3',
         [438] = '4',
-        [439] = '5',
-        [440] = '6',
+        [440] = '5',
+        [439] = '6',
     }
 
     -- This SHOULD be contrained to party members only, but since the logic is only when Aminon is being fought
@@ -477,6 +528,9 @@ windower.register_event('incoming text', function(original, modified, mode)
     end 
     if flan_capturing then
         table.insert(flan_log, original)
+    end
+    if aminon_capturing then
+        table.insert(aminon_log, original)
     end
 
 end)
@@ -533,13 +587,14 @@ windower.register_event('incoming text', function(original, modified, mode)
 
         else
         end
-
-        if original:find("Obtained: %z*\31\205Old case %+1\31\001%.") then
-            old_case_tally = old_case_tally +1
-            windower.add_to_chat(207, '[MuffinMan] Old case +1 obtained!')
-        end
-
     end
+
+    -- Look for notification of +1 case
+    if original:lower():find("obtained:.*old case %+" .. "1") then
+        old_case_tally = old_case_tally +1
+        windower.add_to_chat(207, '[MuffinMan] Old case +1 obtained!')
+    end
+
 
 end)
 
