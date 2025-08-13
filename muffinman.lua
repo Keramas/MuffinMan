@@ -1,5 +1,5 @@
 _addon.name = 'MuffinMan'
-_addon.author = 'Kunel'
+_addon.author = 'Kunel (Keramas)'
 _addon.version = '1.2'
 _addon.commands = {'muffinman','mm'}
 
@@ -43,7 +43,7 @@ local basement_mini_nms = S{
     'Tulittia'
 }
 
-local bosses = S{
+local bosses = {
     'Ghatjot',
     'Leshonn',
     'Skomora',
@@ -327,7 +327,7 @@ local function generate_report()
 
     -- Bosses
     table.insert(report_output, '[Defeated Bosses]')
-    for boss in bosses:it() do
+    for _, boss in ipairs(bosses) do
         if check_nm(boss) then
             table.insert(report_output, boss)
         end
