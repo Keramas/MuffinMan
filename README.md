@@ -25,16 +25,18 @@ Usage:
 //lua load muffinman
 ```
 
+Interact with the addon via either `muff`, `muffins`, or `muffinman`.
+
 To ensure a clear cache and scoreboard (despite filtering for Aminon), use the `reset` command prior to entering Sortie.
 
 ```lua
-//mm reset
+//muffins reset
 ```
 
 To enable/disable automatic report sending to a Discord channel via webhook, use the `discord` command. 
 
 ```lua
-//mm discord
+//muffins discord
 ```
 Additionally, once your webhook has been generated, add it to the top of the `muffinman.lua` file replacing the placeholder text:
 
@@ -45,7 +47,7 @@ local webhook_url = "ADD YOUR WEBHOOK HERE"
 Once the run is over, generate a report which is output to the data folder with the `report` command. If pushes to Discord have been enabled, this will also be pushed to the channel associated with the webhook.
 
 ```lua
-//mm report
+//muffins report
 ```
 
 Example report output:
@@ -117,5 +119,5 @@ PLAYER5         38,461     8
 While the gallimaufry tally is reported each time more gallimaufry is obtained, you can use the `total` command to check the curren tally any time.
 
 ```lua
-//mm total
+//muffins total
 ```
