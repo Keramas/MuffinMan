@@ -1,7 +1,7 @@
 _addon.name = 'MuffinMan'
 _addon.author = 'Kunel (Keramas)'
 _addon.version = '1.2'
-_addon.commands = {'muffinman','mm'}
+_addon.commands = {'muffinman','muff','muffins'}
 
 require('chat')
 require('logger')
