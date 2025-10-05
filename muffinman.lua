@@ -23,6 +23,7 @@ local hm = false
 local fight_start_time = nil
 local fight_end_time = nil
 local party_jobs = {}
+local party_capture = false
 
 local gallimaufry_total = 0
 local starting_galli = 0 
@@ -303,6 +304,9 @@ end
 -- Main report generation function
 ---------------------------------------------------
 local function generate_report()
+    
+    party_jobs = {}
+    party_capture = true
     output_log = T{}
     scoreboard_capturing = true
   
@@ -447,6 +451,8 @@ local function generate_report()
         send_to_discord(report_output)
     end
 
+    party_capture = false
+
 end
 
 
@@ -456,30 +462,32 @@ end
 -- Decode party member data from incoming packet 0x0DD
 windower.register_event('incoming chunk', function(id, data, modified, injected, blocked)
 
-    if id == 0xDF then  -- Character update (0xDF)
-        local packet = packets.parse('incoming', data)
-        if packet then
-            local playerId = packet['ID']
-            if playerId and playerId > 0 then
-              
-                -- Get player name from ID
-                local mob = windower.ffxi.get_mob_by_id(playerId)
-                if mob and mob.name then
-                    update_job_info(mob.name, packet['Main job'], packet['Main job level'], 
-                                  packet['Sub job'], packet['Sub job level'])
+    if party_capture = true
+        if id == 0xDF then  -- Character update (0xDF)
+            local packet = packets.parse('incoming', data)
+            if packet then
+                local playerId = packet['ID']
+                if playerId and playerId > 0 then
+                
+                    -- Get player name from ID
+                    local mob = windower.ffxi.get_mob_by_id(playerId)
+                    if mob and mob.name then
+                        update_job_info(mob.name, packet['Main job'], packet['Main job level'], 
+                                    packet['Sub job'], packet['Sub job level'])
+                    end
                 end
             end
-        end
-        
-    elseif id == 0xDD then  -- Party member update (0xDD)
-        local packet = packets.parse('incoming', data)
-        if packet then
-            local name = packet['Name']
-            local playerId = packet['ID']
-            if name and playerId and playerId > 0 then
-                
-                update_job_info(name, packet['Main job'], packet['Main job level'], 
-                              packet['Sub job'], packet['Sub job level'])
+            
+        elseif id == 0xDD then  -- Party member update (0xDD)
+            local packet = packets.parse('incoming', data)
+            if packet then
+                local name = packet['Name']
+                local playerId = packet['ID']
+                if name and playerId and playerId > 0 then
+                    
+                    update_job_info(name, packet['Main job'], packet['Main job level'], 
+                                packet['Sub job'], packet['Sub job level'])
+                end
             end
         end
     end
