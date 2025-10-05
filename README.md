@@ -44,6 +44,18 @@ Additionally, once your webhook has been generated, add it to the top of the `mu
 local webhook_url = "ADD YOUR WEBHOOK HERE"
 ```
 
+If fighting Aminon hardmode, you can enable this for the report and also track Meso drops:
+
+```lua
+//muffins hm
+```
+
+You can also add a note at the bottom of the report for any additional mentions (who got a +2 etc):
+
+```lua
+//muffins addnote YOURMESSAGE
+```
+
 Once the run is over, generate a report which is output to the data folder with the `report` command. If pushes to Discord have been enabled, this will also be pushed to the channel associated with the webhook.
 
 ```lua
@@ -116,7 +128,7 @@ PLAYER5         38,461     8
 ```
 
 
-While the gallimaufry tally is reported each time more gallimaufry is obtained, you can use the `total` command to check the curren tally any time.
+While the gallimaufry tally is reported each time more gallimaufry is obtained, you can use the `total` command to check the currency tally any time.
 
 ```lua
 //muffins total

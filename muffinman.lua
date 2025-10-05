@@ -1,12 +1,13 @@
 _addon.name = 'MuffinMan'
-_addon.author = 'Kunel (Keramas)'
-_addon.version = '1.2'
+_addon.author = 'Keramas'
+_addon.version = '1.3'
 _addon.commands = {'muffinman','muff','muffins'}
 
 require('chat')
 require('logger')
 packets = require('packets')
 res = require('resources')
+currency = require('currency')
 
 local webhook_url = "ADD YOUR WEBHOOK HERE"
 
@@ -17,12 +18,20 @@ local json = require('dkjson')
 
 local push_to_discord = false
 
-local gallimaufry_total = 0
+local hm = false
+
 local fight_start_time = nil
 local fight_end_time = nil
 local party_jobs = {}
 
+local gallimaufry_total = 0
+local starting_galli = 0 
+local ending_galli = 0
+local galli_total = 0
+
 local old_case_tally = 0
+
+local meso_count = 0
 
 local aminon_rolls = {
     ['Tactician\'s'] = {lucky = false, value = 0},
@@ -30,6 +39,8 @@ local aminon_rolls = {
 }
 
 local wild_card_roll = 0
+
+local additional_note = "Nothing to add"
 
 -----------------------------
 -- Objective and NM tracking
@@ -297,7 +308,7 @@ local function generate_report()
   
     windower.send_command('scoreboard filter add Aminon')
     coroutine.sleep(0.5)
-    windower.send_command('scoreboard report')
+    windower.send_command('scoreboard report party')
     coroutine.sleep(2.5) -- let Scoreboard print its damage lines
     windower.send_command('scoreboard stat wsavg')
     coroutine.sleep(2) -- let Scoreboard print its wsavg lines
@@ -321,7 +332,13 @@ local function generate_report()
     local report_output = {}
 
     table.insert(report_output, ('[Sortie Report - %s]'):format(os.date()))
-    table.insert(report_output, ('Total Gallimaufry: %s'):format(comma_value(gallimaufry_total)))
+    
+    currency.request_update()
+    coroutine.sleep(2)
+    ending_galli = currency.display_values()
+    
+    galli_total = ending_galli - starting_galli
+    table.insert(report_output, ('Total Gallimaufry: %s'):format(comma_value(galli_total)))
     table.insert(report_output, ('Total Old Case +1: %s'):format(comma_value(old_case_tally)))
     table.insert(report_output, "-----------------------------")
 
@@ -367,9 +384,18 @@ local function generate_report()
     table.insert(report_output, "-----------------------------")
 
 
-
     -- Add report block if Aminon was defeated
     if check_aminon() then
+        table.insert(report_output, '[Aminon Mode]')
+
+        -- Mode
+        if hm then
+            table.insert(report_output, 'Hard Mode')
+            table.insert(report_output, ('Mesos obtained: %s'):format(comma_value(meso_count)))
+        else
+            table.insert(report_output, 'Normal Mode')
+        end
+
         -- Add COR roll data
         table.insert(report_output, '[COR Rolls]')
         
@@ -406,6 +432,12 @@ local function generate_report()
             table.insert(report_output, "[Aminon Fight Duration] Data missing or undefeated.")
         end
     end
+
+    table.insert(report_output, "-----------------------------")
+
+    -- Add field for notes as needed
+    table.insert(report_output, '[Extra Notes/Mentions]')
+    table.insert(report_output, additional_note)
 
     windower.send_command('scoreboard filter clear')
 
@@ -595,9 +627,18 @@ windower.register_event('incoming text', function(original, modified, mode)
         windower.add_to_chat(207, '[MuffinMan] Old case +1 obtained!')
     end
 
+    -- Look for notification of meso
+    if original:lower():find("obtained:.*chunk of mesosiderite") then
+        meso_count = meso_count +1
+        windower.add_to_chat(207, '[MuffinMan] mesosiderite obtained!')
+    end
+
 
 end)
 
+
+
+--===================================================================-
 
 -- Command handler
 windower.register_event('addon command', function(cmd, ...)
@@ -609,11 +650,25 @@ windower.register_event('addon command', function(cmd, ...)
         gallimaufry_total = 0
         party_jobs = {}
         windower.add_to_chat(207, '[MuffinMan] Gallimaufry tally and parse have been reset.')
+        starting_galli = currency.display_values()
+        additional_note = "Nothing to add"
+        hm = false
     elseif cmd == 'total' then
         windower.add_to_chat(207, ('[MuffinMan] Current gallimaufry total: %s'):format(comma_value(gallimaufry_total)))
     elseif cmd == 'report' then
         windower.add_to_chat(207, '[MuffinMan] Generating full report...')
         coroutine.schedule(generate_report, 0.5) 
+    elseif cmd == 'addnote' then
+        additional_note = table.concat({...}, " ")
+        windower.add_to_chat(207, "[MuffinMan] Added note: " .. additional_note)
+    elseif cmd == "hm" then
+        if not hm then
+            hm = true
+            windower.add_to_chat(207, '[MuffinMan] Enabled aminon hard mode.')
+        else 
+            hm = false
+            windower.add_to_chat(207, '[MuffinMan] Disabled aminon hard mode.')
+        end
     elseif cmd == 'discord' then
         if not push_to_discord then
             push_to_discord = true
@@ -625,8 +680,19 @@ windower.register_event('addon command', function(cmd, ...)
     else
         windower.add_to_chat(123, '[MuffinMan] Commands:')
         windower.add_to_chat(123, '//mm total     - Show gallimaufry total')
-        windower.add_to_chat(123, '//mm reset     - Reset gallimaufry and parse')
+        windower.add_to_chat(123, '//mm addnote   - Add an additional note to the report')
+        windower.add_to_chat(123, '//mm hm        - Toggle Aminon hard mode reporting')
+        windower.add_to_chat(123, '//mm reset     - Reset gallimaufry, parse, and all settings')
         windower.add_to_chat(123, '//mm report    - Save gallimaufry and damage report to file')
         windower.add_to_chat(123, '//mm discord   - Enables/disables automatic push to Discord channel via webhook.')
     end
 end)
+
+-- Init everything on load --
+
+currency.request_update()
+coroutine.sleep(2)
+starting_galli = currency.display_values()
+windower.send_command('scoreboard reset')
+gallimaufry_total = 0
+party_jobs = {}
