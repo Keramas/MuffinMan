@@ -462,7 +462,7 @@ end
 -- Decode party member data from incoming packet 0x0DD
 windower.register_event('incoming chunk', function(id, data, modified, injected, blocked)
 
-    if party_capture = true then
+    if party_capture then
         if id == 0xDF then  -- Character update (0xDF)
             local packet = packets.parse('incoming', data)
             if packet then
